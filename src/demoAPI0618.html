@@ -1,0 +1,102 @@
+<!-- ✅ demoAPI0605.html：SPA 專用子頁，樣式一致 -->
+<h2 style="text-align: center;">📊 資料表操作</h2>
+
+<div class="form-group">
+  <button class="tab-btn" onclick="loadTable(apiemployee, container1)">送貨員列表</button>
+  <button class="tab-btn" onclick="loadTable(apimember, container1)">會員清單</button>
+  <button class="tab-btn" onclick="loadTable(apiorders, container1)">歷史訂單查詢</button>
+  <button class="tab-btn" onclick="loadTable(apiproduct2, container1)">產品列表</button>
+  <button class="tab-btn" onclick="loadTable(apilength, container1)">長度</button>
+  <button class="tab-btn" onclick="loadTable(apiweight, container1)">寬度</button>
+</div>
+
+<div id="tableContainer" style="margin-top: 20px;">請選擇上方項目載入資料...</div>
+
+<script>
+  const apiemployee = 'http://localhost:8000/api/1/employee';
+  const apimember = 'http://localhost:8000/api/1/member';
+  const apiorders = 'http://localhost:8000/api/1/orders';
+  const apiproduct2 = 'http://localhost:8000/api/1/product2';
+  const apilength = 'http://localhost:8000/api/1/length';
+  const apiweight = 'http://localhost:8000/api/1/weight';
+
+  const container1 = document.getElementById('tableContainer');
+
+  function getTableNameFromUrl(url) {
+    if (url.includes("employee")) return "employee";
+    if (url.includes("member")) return "member";
+    if (url.includes("orders")) return "orders";
+    if (url.includes("product2")) return "product2";
+    if (url.includes("length")) return "length";
+    if (url.includes("weight")) return "weight";
+    return "";
+  }
+
+  async function loadTable(url, todiv) {
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`HTTP 錯誤: ${resp.status}`);
+      const data = await resp.json();
+      if (!Array.isArray(data) || data.length === 0) {
+        todiv.textContent = '沒有資料';
+        return;
+      }
+
+      const tableName = getTableNameFromUrl(url);
+
+      let table = '<table><thead><tr>';
+      table += '<th>操作</th>';
+      const keys = Object.keys(data[0]);
+      keys.forEach(k => {
+        table += `<th>${k}</th>`;
+      });
+      table += '</tr></thead><tbody>';
+
+      data.forEach(row => {
+        const rowWithExtra = JSON.stringify({ ...row, table: tableName, state: -1 });
+        table += '<tr>';
+        table += `<td><button class="tab-btn" style="background-color:#e74c3c;" onclick='updaterow(${rowWithExtra})'>刪除</button></td>`;
+        keys.forEach(k => {
+          table += `<td>${row[k]}</td>`;
+        });
+        table += '</tr>';
+      });
+      table += '</tbody></table>';
+      todiv.innerHTML = table;
+
+    } catch (err) {
+      todiv.textContent = '載入失敗：' + err.message;
+    }
+  }
+
+  function updaterow(returnbody) {
+    fetch('http://localhost:8000/api/2/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(returnbody),
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('更新失敗');
+
+      const rowButtons = document.querySelectorAll('button');
+      rowButtons.forEach(btn => {
+        if (btn.textContent === '刪除') {
+          const jsonData = btn.getAttribute('onclick');
+          if (jsonData.includes(`"${returnbody.id}"`) || jsonData.includes(`:${returnbody.id}`)) {
+            const row = btn.closest('tr');
+            const cells = row.querySelectorAll('td');
+            const headerCells = row.closest('table').querySelectorAll('th');
+            headerCells.forEach((th, idx) => {
+              if (th.textContent.trim().toLowerCase() === 'status') {
+                cells[idx].textContent = '-1';
+              }
+            });
+          }
+        }
+      });
+    })
+    .catch(err => {
+      alert('更新失敗：' + err.message);
+    });
+  }
+</script>

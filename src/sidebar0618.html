@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>響應式 SPA 導覽頁</title>
+    
+    <link rel="stylesheet" href="common.css">
+    
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+
+        .sidebar {
+            width: 240px;
+            background-color: #2c3e50;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease-in-out;
+        }
+
+
+        .sidebar h2 {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+
+        .sidebar a {
+            padding: 15px 20px;
+            text-decoration: none;
+            color: white;
+            transition: background 0.2s;
+        }
+
+
+        .sidebar a:hover {
+            background: #34495e;
+        }
+
+
+        .content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+
+        .hamburger {
+            display: none;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 24px;
+            background: none;
+            border: none;
+            color: #2c3e50;
+            z-index: 10;
+        }
+
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                height: 100vh;
+                z-index: 5;
+                transform: translateX(-100%);
+            }
+
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+
+            .hamburger {
+                display: block;
+            }
+        }
+    </style>
+</head>
+
+
+<body>
+
+
+    <button class="hamburger" onclick="toggleSidebar()">☰</button>
+
+
+    <div class="sidebar" id="sidebar">
+        <h2>功能選單</h2>
+        <a href="sidebar.html?target=demoinsertCustomer3.html">🧑‍💼 新增客戶</a>
+        <a href="sidebar.html?target=insertEmployee.html">🚚 新增送貨員</a>
+        <a href="sidebar.html?target=demoinsertOrder2.html">📝 新增訂單</a>
+        <a href="sidebar.html?target=demoAPI0618.html">🔍 查詢資料</a>
+
+
+
+
+    </div>
+
+
+    <div class="content" id="mainContent">
+        <h1>歡迎使用系統</h1>
+        <p>請從左側選單選擇功能。</p>
+    </div>
+
+
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+        }
+
+
+        function getQueryParam(name) {
+            const params = new URLSearchParams(window.location.search);
+            return params.get(name);
+        }
+
+
+        async function loadPage(fileName) {
+            try {
+                const response = await fetch(fileName);
+                if (!response.ok) throw new Error('載入失敗');
+                const html = await response.text();
+
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+
+
+                const content = document.getElementById('mainContent');
+                content.innerHTML = '';
+
+
+                // 移除舊 script（標記為 data-dynamic 的）
+                document.querySelectorAll('script[data-dynamic]').forEach(s => s.remove());
+
+
+                // 插入非 script 元素
+                Array.from(doc.body.childNodes).forEach(node => {
+                    if (node.tagName !== 'SCRIPT') {
+                        content.appendChild(document.importNode(node, true));
+                    }
+                });
+
+
+                // 等 DOM 實際插入後，再動態掛載 script
+                const scripts = doc.querySelectorAll('script');
+                scripts.forEach(oldScript => {
+                    const newScript = document.createElement('script');
+                    if (oldScript.src) {
+                        newScript.src = oldScript.src;
+                    } else {
+                        newScript.textContent = oldScript.textContent;
+                    }
+                    newScript.setAttribute('data-dynamic', 'true');
+                    // 注意：不是加到 document.body，而是 mainContent 內！
+                    // 這樣才保證 DOM 存在再執行（尤其是 document.getElementById）
+                    content.appendChild(newScript);
+                });
+
+
+                if (window.innerWidth <= 768) toggleSidebar(); // 手機收 sidebar
+            } catch (err) {
+                document.getElementById('mainContent').innerHTML =
+                    `<p style="color:red;">⚠ 無法載入 ${fileName}：${err.message}</p>`;
+            }
+        }
+
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const target = getQueryParam('target');
+            if (target) {
+            loadPage(target);
+        }
+        });
+
+
+    </script>
+</body>
+</html>
