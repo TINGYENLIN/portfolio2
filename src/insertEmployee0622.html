@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>送貨員新增表單</title>
+  <style>
+    .insertEmployee {
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+    }
+
+    .insertEmployee form {
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    .insertEmployee fieldset {
+      border: 1px solid #ccc;
+      padding: 16px;
+      border-radius: 5px;
+    }
+
+    .insertEmployee legend {
+      font-weight: bold;
+      padding: 0 10px;
+      font-size: 15px;
+    }
+
+    .insertEmployee .form-group {
+      display: flex;
+      margin-bottom: 10px;
+      align-items: center;
+    }
+
+    .insertEmployee .form-group label {
+      flex: 0 0 90px;
+      text-align: right;
+      margin-right: 10px;
+    }
+
+    .insertEmployee .form-group input,
+    .insertEmployee .form-group select {
+      width: 200px;
+      padding: 6px;
+      font-size: 13px;
+      box-sizing: border-box;
+    }
+
+    .insertEmployee #employeeGender {
+      width: 215px;
+    }
+
+    .insertEmployee button {
+      margin-left: 100px;
+      padding: 6px 12px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="insertEmployee">
+    <h2 style="text-align: center;">送貨員新增表單</h2>
+    <form id="employeeForm">
+      <fieldset>
+        <legend>送貨員基本資料</legend>
+
+        <div class="form-group">
+          <label for="employeeName">姓名：</label>
+          <input type="text" id="employeeName" name="employeeName" required />
+        </div>
+
+        <div class="form-group">
+          <label for="employeeGender">性別：</label>
+          <select id="employeeGender" name="employeeGender" required>
+            <option value="">請選擇</option>
+            <option value="M">男</option>
+            <option value="F">女</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="employeeBirthday">生日：</label>
+          <input type="date" id="employeeBirthday" name="employeeBirthday" />
+        </div>
+
+        <div class="form-group">
+          <label for="employeePhone">電話：</label>
+          <input type="tel" id="employeePhone" name="employeePhone" required />
+        </div>
+
+        <div class="form-group">
+          <label for="remark">備註：</label>
+          <input type="text" id="remark" name="remark" />
+        </div>
+
+        <div class="form-group">
+          <button type="button" onclick="insertEmployee()" id="submitBtn">新增</button>
+        </div>
+      </fieldset>
+    </form>
+  </div>
+
+  <script>
+    function insertEmployee() {
+      const name = document.getElementById("employeeName").value.trim();
+      const gender = document.getElementById("employeeGender").value;
+      const birthday = document.getElementById("employeeBirthday").value;
+      const phone = document.getElementById("employeePhone").value.trim();
+      const remark = document.getElementById("remark").value.trim();
+      const button = document.getElementById("submitBtn");
+
+      if (!name) {
+        alert("請輸入姓名");
+        return;
+      }
+
+      if (!gender) {
+        alert("請選擇性別");
+        return;
+      }
+
+      if (!phone.match(/^09\d{8}$/)) {
+        alert("請輸入正確格式的手機號碼（例如：0912345678）");
+        return;
+      }
+
+      const data = {
+        table: "employee",
+        employeeName: name,
+        employeeGender: gender,
+        employeeBirthday: birthday ? birthday.replace(/-/g, "") : null,
+        employeePhone: phone,
+        remark: remark,
+      };
+
+      button.disabled = true;
+      const originalText = button.textContent;
+      button.textContent = "送出中...";
+
+      fetch("http://localhost:8000/api/2/insert", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      })
+        .then((response) => {
+          button.disabled = false;
+          button.textContent = originalText;
+          if (response.ok) {
+            alert("送貨員新增成功！");
+            document.getElementById("employeeForm").reset();
+          } else {
+            response.text().then((text) => {
+              console.error("伺服器回應錯誤:", text);
+              alert("新增失敗：" + text);
+            });
+          }
+        })
+        .catch((error) => {
+          button.disabled = false;
+          button.textContent = originalText;
+          console.error("發生錯誤:", error);
+          alert("無法連線至伺服器！");
+        });
+    }
+  </script>
+</body>
+</html>

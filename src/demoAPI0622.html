@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>資料操作</title>
+  <style>
+    .hidden {
+      display: none;
+    } 
+    .tab-btn {
+      margin-right: 10px;
+      padding: 6px 12px;
+      cursor: pointer;
+      background-color: #0078D4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }  
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 1em;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f0f0f0;
+    }
+    #tableContainer {
+      margin-bottom: 2em;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="demoAPI0605">
+    <h1>資料表操作</h1>
+    <div>
+      <button class="tab-btn" onclick="loadTable(apiemployee, container1)">送貨員列表</button>
+      <button class="tab-btn" onclick="loadTable(apimember, container1)">會員清單</button>
+      <button class="tab-btn" onclick="loadTable(apiorders, container1)">歷史訂單查詢</button>
+      <button class="tab-btn" onclick="loadTable(apiproduct2, container1)">產品列表</button>
+      <button class="tab-btn" onclick="loadTable(apilength, container1)">長度</button>
+      <button class="tab-btn" onclick="loadTable(apiweight, container1)">寬度</button>
+      
+      <div id="tableContainer">請點擊上方按鈕載入資料</div>
+    </div>
+  </div>
+
+  <script>
+    // 把函式掛到 window，確保能從外部呼叫
+    window.apiemployee = 'http://localhost:8000/api/1/employee';
+    window.apimember = 'http://localhost:8000/api/1/member';
+    window.apiorders = 'http://localhost:8000/api/1/orders';
+    window.apiproduct2 = 'http://localhost:8000/api/1/product2';
+    window.apilength = 'http://localhost:8000/api/1/length';
+    window.apiweight = 'http://localhost:8000/api/1/weight';
+
+    window.container1 = document.getElementById('tableContainer');
+    
+    window.getTableNameFromUrl = function(url) {
+      if (url.includes("employee")) return "employee";
+      if (url.includes("member")) return "member";
+      if (url.includes("orders")) return "orders";
+      if (url.includes("product2")) return "product2";
+      if (url.includes("length")) return "length";
+      if (url.includes("weight")) return "weight";
+      return "";
+    }
+
+    window.loadTable = async function(url, todiv) {
+      try {
+        todiv.textContent = "載入中...";
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`HTTP 錯誤: ${resp.status}`);
+        const data = await resp.json();
+        if (!Array.isArray(data) || data.length === 0) {
+          todiv.textContent = '沒有資料';
+          return;
+        }
+
+        const tableName = window.getTableNameFromUrl(url);
+
+        // 產生表格
+        let table = '<table><thead><tr>';
+        
+        table += `<th>操作</th>`;
+        const keys = Object.keys(data[0]);
+        keys.forEach(k => {
+          table += `<th>${k}</th>`;
+        });
+        table += '</tr></thead><tbody>';
+
+        data.forEach(row => {
+          const rowWithExtra = JSON.stringify({ ...row, table: tableName, state: -1 });
+          table += '<tr>';
+          table += `<td><button onclick='window.updaterow(${rowWithExtra})'>刪除</button></td>`;
+          keys.forEach(k => {
+            table += `<td>${row[k]}</td>`;
+          });
+          table += '</tr>';
+        });
+        table += '</tbody></table>';
+        todiv.innerHTML = table;
+      } catch (err) {
+        todiv.textContent = '載入失敗：' + err.message;
+      }
+    };
+
+    window.updaterow = function(returnbody) {
+      fetch('http://localhost:8000/api/2/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(returnbody),
+      }).then(res => {
+        if (!res.ok) throw new Error('更新失敗');
+        alert('刪除成功');
+        // 你也可以在這裡重新呼叫 loadTable 重新載入表格，視需求而定
+      }).catch(err => {
+        alert('更新失敗：' + err.message);
+      });
+    }
+  </script>
+</body>
+</html>
