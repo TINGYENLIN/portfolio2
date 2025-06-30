@@ -55,6 +55,11 @@
       padding: 6px 12px;
       font-size: 13px;
     }
+
+    .insertEmployee button:hover {
+      background-color: #34495e;
+      color: white;
+    }
   </style>
 </head>
 <body>
@@ -94,14 +99,22 @@
         </div>
 
         <div class="form-group">
-          <button type="button" onclick="insertEmployee()" id="submitBtn">新增</button>
+          <button type="button" id="submitBtn">新增</button>
         </div>
       </fieldset>
     </form>
   </div>
 
   <script>
-    function insertEmployee() {
+    // 將函式掛到 window，讓 sidebar 可存取
+    window.bindEmployeeFormEvents = function () {
+      const btn = document.getElementById("submitBtn");
+      if (btn) {
+        btn.addEventListener("click", window.insertEmployee);
+      }
+    };
+
+    window.insertEmployee = function () {
       const name = document.getElementById("employeeName").value.trim();
       const gender = document.getElementById("employeeGender").value;
       const birthday = document.getElementById("employeeBirthday").value;
@@ -163,7 +176,15 @@
           console.error("發生錯誤:", error);
           alert("無法連線至伺服器！");
         });
-    }
+    };
+
+    window.bindEmployeeFormEvents = function () {
+      const btn = document.getElementById("submitBtn");
+      if (btn) {
+        btn.addEventListener("click", insertEmployee);
+      }
+    };
+
   </script>
 </body>
 </html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>新增訂單表單</title>
+</head>
+<body>
+  <div class="insertOrder">
+    <h2>新增訂單</h2>
+
+    <label for="pname">商品：</label>
+    <select id="pname" required></select>
+
+    <label for="cname">會員：</label>
+    <select id="cname" required></select>
+
+    <label for="sname">運送者：</label>
+    <select id="sname" required></select>
+
+    <button id="submitOrderBtn">新增</button>
+  </div>
+
+  <script>
+    let currentPrice = 0;
+
+    window.cnameAdd = async function () {
+      const cname = document.getElementById("cname");
+      const apiCustomer = 'http://localhost:8000/api/1/member';
+
+      try {
+        const resp = await fetch(apiCustomer);
+        const data = await resp.json();
+
+        cname.innerHTML = '<option value="" disabled selected>-- 請選擇會員 --</option>';
+        data.forEach(row => {
+          const op = document.createElement("option");
+          op.value = row["idmember"];
+          op.textContent = `${row["idmember"]} - ${row["membername"]}`;
+          op.setAttribute("data-name", row["membername"]);
+          op.setAttribute("data-phone", row["phone"]);
+          cname.append(op);
+        });
+      } catch (err) {
+        alert("會員資料載入失敗！");
+        console.error(err);
+      }
+    };
+
+    window.pnameAdd = async function () {
+      const pname = document.getElementById("pname");
+      const apiProduct = 'http://localhost:8000/api/1/product2';
+
+      try {
+        const resp = await fetch(apiProduct);
+        const data = await resp.json();
+
+        pname.innerHTML = '<option value="" disabled selected>-- 請選擇商品 --</option>';
+        data.forEach(row => {
+          const op = document.createElement("option");
+          const weightCategory = parseFloat(row["weight"]) >= 10 ? "over 10" : "under 10";
+          const plan = `${row["distance"]} | ${row["length"]} | ${weightCategory}`;
+
+          op.value = row["idproduct2"];
+          op.textContent = `${row["idproduct2"]} - 距離:${row["distance"]}, 長度:${row["length"]}, 重量:${row["weight"]}, 價格:${row["price"]}`;
+          op.setAttribute("data-price", row["price"]);
+          op.setAttribute("data-plan", plan);
+          pname.append(op);
+        });
+      } catch (err) {
+        alert("商品資料載入失敗！");
+        console.error(err);
+      }
+    };
+
+    window.snameAdd = async function () {
+      const sname = document.getElementById("sname");
+      const apiShipper = 'http://localhost:8000/api/1/employee';
+
+      try {
+        const resp = await fetch(apiShipper);
+        const data = await resp.json();
+
+        sname.innerHTML = '<option value="" disabled selected>-- 請選擇運送者 --</option>';
+        data.forEach(row => {
+          const op = document.createElement("option");
+          op.value = row["idemployee"];
+          op.textContent = `${row["idemployee"]} - ${row["employeeName"]}`;
+          op.setAttribute("data-name", row["employeeName"]);
+          op.setAttribute("data-ccnum", row["creditcard"]);
+          sname.append(op);
+        });
+      } catch (err) {
+        alert("運送者資料載入失敗！");
+        console.error(err);
+      }
+    };
+
+    window.insertpost = function () {
+      const pname = document.getElementById("pname");
+      const cname = document.getElementById("cname");
+      const sname = document.getElementById("sname");
+
+      const pnameValue = pname.value;
+      const cnameValue = cname.value;
+      const snameValue = sname.value;
+
+      if (!pnameValue || !cnameValue || !snameValue) {
+        alert("請完整選擇商品、會員與運送者！");
+        return;
+      }
+
+      const selectedProduct = pname.options[pname.selectedIndex];
+      const selectedCustomer = cname.options[cname.selectedIndex];
+      const selectedShipper = sname.options[sname.selectedIndex];
+
+      const payload = {
+        table: "orders",
+        pname: pnameValue,
+        cname: cnameValue,
+        sname: snameValue,
+        price: selectedProduct.getAttribute("data-price"),
+        customerName: selectedCustomer.getAttribute("data-name"),
+        customerPhone: selectedCustomer.getAttribute("data-phone"),
+        employeeName: selectedShipper.getAttribute("data-name"),
+        creditCardNumber: selectedShipper.getAttribute("data-ccnum"),
+        plan: selectedProduct.getAttribute("data-plan")
+      };
+
+      console.log("送出的資料：", payload);
+
+      fetch("http://localhost:8000/api/2/insert", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      })
+        .then(res => {
+          if (res.ok) {
+            alert("新增成功！");
+          } else {
+            res.text().then(txt => alert("新增失敗：" + txt));
+          }
+        })
+        .catch(err => {
+          console.error("錯誤：", err);
+          alert("伺服器錯誤！");
+        });
+    };
+
+    window.bindOrderFormEvents = async function () {
+      await Promise.all([
+        window.cnameAdd(),
+        window.pnameAdd(),
+        window.snameAdd()
+      ]);
+
+      const pname = document.getElementById("pname");
+      pname.addEventListener("change", () => {
+        const selected = pname.options[pname.selectedIndex];
+        currentPrice = selected.getAttribute("data-price");
+      });
+
+      const btn = document.getElementById("submitOrderBtn");
+      btn.removeEventListener("click", window.insertpost); // 清掉重複
+      btn.addEventListener("click", window.insertpost);
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tim Express</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", sans-serif;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .sidebar {
+      width: 240px;
+      background-color: #2c3e50;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.3s ease-in-out;
+    }
+    .sidebar h2 {
+      text-align: center;
+      margin: 20px 0;
+    }
+    .sidebar a {
+      padding: 15px 20px;
+      text-decoration: none;
+      color: white;
+      transition: background 0.2s;
+    }
+    .sidebar a:hover {
+      background: #34495e;
+    }
+    .content {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .hamburger {
+      display: none;
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 24px;
+      background: none;
+      border: none;
+      color: #2c3e50;
+      z-index: 10;
+      cursor: pointer;
+    }
+    @media (max-width: 768px) {
+      .sidebar {
+        position: fixed;
+        height: 100vh;
+        z-index: 5;
+        transform: translateX(-100%);
+      }
+      .sidebar.active {
+        transform: translateX(0);
+      }
+      .hamburger {
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+
+  <div class="sidebar" id="sidebar">
+    <h2>功能選單</h2>
+    <a href="sidebar0626.html?target=demoinsertCustomer4.html">🧑‍💼 新增客戶</a>
+    <a href="sidebar0626.html?target=insertEmployee0626.html">🚚 新增送貨員</a>
+    <a href="sidebar0626.html?target=demoinsertOrder3.html">📝 新增訂單</a>
+    <a href="sidebar0626.html?target=demoAPI0622.html">🔍 查詢資料</a>
+  </div>
+
+  <div class="content" id="mainContent">
+    <h1>歡迎使用系統</h1>
+    <p>請從左側選單選擇功能。</p>
+  </div>
+
+  <script>
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('active');
+    }
+
+    function getQueryParam(name) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(name);
+    }
+
+    async function loadPage(fileName) {
+      try {
+        // 清除前一次動態內容的變數與 script
+        delete window.apiemployee;
+        delete window.apiCustomer;
+
+        const response = await fetch(fileName);
+        if (!response.ok) throw new Error('載入失敗');
+        const html = await response.text();
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        const content = document.getElementById('mainContent');
+        content.innerHTML = '';
+
+        // 移除舊的動態 script 與 style
+        document.querySelectorAll('script[data-dynamic]').forEach(s => s.remove());
+        document.querySelectorAll('style[data-dynamic-style]').forEach(style => style.remove());
+
+        // 載入新的內容（僅內容區塊）
+        const customDiv = doc.querySelector('.insertEmployee') || doc.querySelector('.insertCustomer') || doc.querySelector('.insertOrder');
+        if (customDiv) {
+          content.appendChild(document.importNode(customDiv, true));
+        } else {
+          Array.from(doc.body.childNodes).forEach(node => {
+            if (node.tagName !== 'SCRIPT') {
+              content.appendChild(document.importNode(node, true));
+            }
+          });
+        }
+
+        // 動態載入 style
+        doc.querySelectorAll('style').forEach(styleTag => {
+          const newStyle = document.createElement('style');
+          newStyle.textContent = styleTag.textContent;
+          newStyle.setAttribute('data-dynamic-style', 'true');
+          document.head.appendChild(newStyle);
+        });
+
+        // 動態載入 script（使用 IIFE 包裹以避免汙染全域）
+        const scriptPromises = Array.from(doc.querySelectorAll('script')).map(oldScript => {
+          return new Promise((resolve) => {
+            const newScript = document.createElement('script');
+            if (oldScript.src) {
+              newScript.src = oldScript.src;
+              newScript.onload = resolve;
+            } else {
+              newScript.textContent = `(function() { ${oldScript.textContent} })();`;
+              resolve();
+            }
+            newScript.setAttribute('data-dynamic', 'true');
+            content.appendChild(newScript);
+          });
+        });
+
+        await Promise.all(scriptPromises);
+
+        // 呼叫子頁面提供的初始化方法
+        if (fileName.includes("demoinsertCustomer4") && typeof window.bindCustomerFormEvents === "function") {
+          window.bindCustomerFormEvents();
+        } else if (fileName.includes("insertEmployee0626") && typeof window.bindEmployeeFormEvents === "function") {
+          window.bindEmployeeFormEvents();
+        } else if (fileName.includes("demoinsertOrder3") && typeof window.bindOrderFormEvents === "function") {
+          window.bindOrderFormEvents();
+        }
+
+        if (window.innerWidth <= 768) toggleSidebar();
+      } catch (err) {
+        document.getElementById('mainContent').innerHTML =
+          `<p style="color:red;">⚠ 無法載入 ${fileName}：${err.message}</p>`;
+        console.error(err);
+      }
+    }
+
+    // 頁面首次載入根據參數載入內容
+    window.addEventListener('DOMContentLoaded', () => {
+      const target = getQueryParam('target');
+      if (target) {
+        loadPage(target);
+      }
+    });
+
+    // 側邊欄選單點擊事件
+    document.querySelectorAll('.sidebar a').forEach(link => {
+      link.addEventListener('click', e => {
+        e.preventDefault();
+        const url = new URL(link.href);
+        const target = url.searchParams.get('target');
+        if (target) {
+          loadPage(target);
+          if (window.innerWidth <= 768) toggleSidebar();
+          history.pushState(null, '', `sidebar0626.html?target=${target}`);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
