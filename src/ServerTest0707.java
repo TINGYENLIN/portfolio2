@@ -11,7 +11,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 
-public class ServerTest0605 {
+public class ServerTest0707 {
     public static void main(String[] args) throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
 
@@ -19,9 +19,9 @@ public class ServerTest0605 {
         // order_v1"));
         // server.createContext("/api/customers", new TableDataHandler("select * from
         // customers"));
-        server.createContext("/api/1/employee", new TableDataHandler("select * from employee")); // demoAPI0510
+        server.createContext("/api/1/employee", new TableDataHandler("select * from employee ORDER BY idemployee ASC"));
         server.createContext("/api/1/member", new TableDataHandler("select * from member ORDER BY idmember ASC"));
-        server.createContext("/api/1/orders", new TableDataHandler("select * from orders"));
+        server.createContext("/api/1/orders", new TableDataHandler("select * from orders ORDER BY idorders ASC"));
         server.createContext("/api/1/product2", new TableDataHandler("select * from product2 ORDER BY idproduct2 ASC"));
         server.createContext("/api/1/length", new TableDataHandler("select * from length"));
         server.createContext("/api/1/weight", new TableDataHandler("select * from weight"));
@@ -175,7 +175,12 @@ public class ServerTest0605 {
                         String country = map.get("country");
                         String creditcard = map.get("creditcard");
                         DBConnect02.executeUpdate(
-                                "INSERT INTO member (idmember, membername, gender, birthday, email, phone, country, creditcard) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                                "INSERT INTO member (idmember, membername, gender, birthday, email, phone, country, creditcard) "
+                                        +
+                                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?) " +
+                                        "ON DUPLICATE KEY UPDATE " +
+                                        "gender=VALUES(gender), birthday=VALUES(birthday), email=VALUES(email), " +
+                                        "phone=VALUES(phone), country=VALUES(country), Status='1'",
                                 memberid, name, gender, birthday, email, phone, country, creditcard);
                         exchange.sendResponseHeaders(200, -1);
                         break;
@@ -186,9 +191,13 @@ public class ServerTest0605 {
                         String employeeGender = map.get("employeeGender");
                         String employeeBirthday = map.get("employeeBirthday");
                         String employeePhone = map.get("employeePhone");
+
                         DBConnect02.executeUpdate(
-                                "INSERT INTO employee (idemployee, employeeName, employeeGender, employeeBirthday, employeePhone) VALUES (?, ?, ?, ?, ?)",
+                                "INSERT INTO employee (idemployee, employeeName, employeeGender, employeeBirthday, employeePhone) "
+                                        +
+                                        "VALUES (?, ?, ?, ?, ?)",
                                 employeeid, employeeName, employeeGender, employeeBirthday, employeePhone);
+
                         exchange.sendResponseHeaders(200, -1);
                         break;
 
@@ -277,21 +286,19 @@ public class ServerTest0605 {
                         exchange.sendResponseHeaders(200, -1);
                         break;
 
-                    case "customers":
-                        String name = map.get("name");
-                        int id = DBConnect02.getNextId("customers", "idCustomers");
+                    case "member":
+                        String mid = map.get("idmember");
+                        String mState = map.get("state"); // 你前端傳過來的 -1
                         DBConnect02.executeUpdate(
-                                "INSERT INTO customers (idCustomers, CustmerName) VALUES (?, ?)", id, name);
+                                "UPDATE member SET status = ? WHERE idmember = ?", mState, mid);
                         exchange.sendResponseHeaders(200, -1);
                         break;
 
                     case "products":
-                        String pname = map.get("pname");
-                        String price = map.get("price");
-                        int pid = DBConnect02.getNextId("products", "idProducts");
+                        String prodId = map.get("idProduct2");
+                        String prodState = map.get("state"); // -1 表示刪除
                         DBConnect02.executeUpdate(
-                                "INSERT INTO products (idProducts, ProductName, Price, CategoryID) VALUES (?, ?, ?, 1)",
-                                pid, pname, Integer.parseInt(price));
+                                "UPDATE products SET status = ? WHERE idProducts = ?", prodState, prodId);
                         exchange.sendResponseHeaders(200, -1);
                         break;
 

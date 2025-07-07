@@ -74,14 +74,35 @@ public class DBConnect02 {
     }
 
     public static int getNextId(String tableName, String columnName) {
-        try (ResultSet rs = DBConnect02.selectQuery("SELECT MAX(" + columnName + ") FROM " + tableName)) {
-            if (rs.next()) {
-                return rs.getInt(1) + 1;
+        int nextId = 1;
+        try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD)) {
+            // 先取得 MAX + 1
+            String maxSql = "SELECT COALESCE(MAX(" + columnName + "), 0) + 1 AS nextId FROM " + tableName;
+            try (PreparedStatement maxStmt = conn.prepareStatement(maxSql);
+                    ResultSet rs = maxStmt.executeQuery()) {
+                if (rs.next()) {
+                    nextId = rs.getInt("nextId");
+                }
+            }
+
+            // 再保險: 確保這個 nextId 沒人用
+            while (true) {
+                String checkSql = "SELECT 1 FROM " + tableName + " WHERE " + columnName + " = ?";
+                try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
+                    checkStmt.setInt(1, nextId);
+                    try (ResultSet checkRs = checkStmt.executeQuery()) {
+                        if (!checkRs.next()) {
+                            break; // 找到沒人用的 id
+                        }
+                    }
+                }
+                nextId++; // 該 id 已被使用，往後找
             }
         } catch (Exception e) {
             e.printStackTrace();
+            throw new RuntimeException("取得 nextId 失敗：" + e.getMessage(), e);
         }
-        return 1;
+        return nextId;
     }
 
     public static Map<String, String> parseJson(String json) {

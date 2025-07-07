@@ -38,6 +38,7 @@
           op.textContent = `${row["idmember"]} - ${row["membername"]}`;
           op.setAttribute("data-name", row["membername"]);
           op.setAttribute("data-phone", row["phone"]);
+          op.setAttribute("data-ccnum", row["creditcard"]);
           cname.append(op);
         });
       } catch (err) {
@@ -86,7 +87,6 @@
           op.value = row["idemployee"];
           op.textContent = `${row["idemployee"]} - ${row["employeeName"]}`;
           op.setAttribute("data-name", row["employeeName"]);
-          op.setAttribute("data-ccnum", row["creditcard"]);
           sname.append(op);
         });
       } catch (err) {
@@ -122,7 +122,7 @@
         customerName: selectedCustomer.getAttribute("data-name"),
         customerPhone: selectedCustomer.getAttribute("data-phone"),
         employeeName: selectedShipper.getAttribute("data-name"),
-        creditCardNumber: selectedShipper.getAttribute("data-ccnum"),
+        creditCardNumber: selectedCustomer.getAttribute("data-ccnum"),
         plan: selectedProduct.getAttribute("data-plan")
       };
 
